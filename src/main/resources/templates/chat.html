@@ -7,10 +7,11 @@
     <style>
         body {
             background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .chat-box {
-            max-width: 600px;
+            max-width: 700px;
             margin: 50px auto;
             padding: 20px;
             background: white;
@@ -18,11 +19,39 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .response {
-            margin-top: 15px;
-            padding: 10px;
+        .chat-history {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
             border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 12px;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.user .bubble {
+            background: #0d6efd;
+            color: white;
+            border-radius: 15px 15px 0 15px;
+            padding: 10px 15px;
+            display: inline-block;
+            max-width: 70%;
+        }
+
+        .message.ai .bubble {
             background: #e9ecef;
+            border-radius: 15px 15px 15px 0;
+            padding: 10px 15px;
+            display: inline-block;
+            max-width: 70%;
         }
     </style>
 </head>
@@ -31,30 +60,62 @@
     <div class="chat-box">
         <h3 class="mb-3 text-center">AI Chat Demo</h3>
 
+        <!-- Memory Toggle -->
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="memoryToggle">
+            <label class="form-check-label" for="memoryToggle">Enable Memory</label>
+        </div>
+
+        <!-- Input form -->
         <form id="chatForm" class="d-flex">
             <input id="message" type="text" class="form-control me-2" placeholder="Type your question..." required>
             <button type="submit" class="btn btn-primary">Ask</button>
         </form>
 
-        <div id="response" class="response d-none"></div>
+        <!-- Chat history -->
+        <div id="chatHistory" class="chat-history mt-3"></div>
     </div>
 
     <script>
+        const memoryToggle = document.getElementById("memoryToggle");
+        const chatHistory = document.getElementById("chatHistory");
+
+        // Toggle memory
+        memoryToggle.addEventListener("change", async function () {
+            await fetch(`/ai/memory?enable=${memoryToggle.checked}`, { method: "POST" });
+            chatHistory.innerHTML = ""; // reset history when toggling
+        });
+
+        // Submit chat
         document.getElementById("chatForm").addEventListener("submit", async function (e) {
             e.preventDefault();
 
             const message = document.getElementById("message").value;
-            const responseDiv = document.getElementById("response");
-            responseDiv.classList.remove("d-none");
-            responseDiv.textContent = "Thinking...";
+
+            // Add user message
+            const userMessage = document.createElement("div");
+            userMessage.classList.add("message", "user");
+            userMessage.innerHTML = `<div class="bubble">${message}</div>`;
+            chatHistory.appendChild(userMessage);
+
+            // AI typing placeholder
+            const aiMessage = document.createElement("div");
+            aiMessage.classList.add("message", "ai");
+            aiMessage.innerHTML = `<div class="bubble">Thinking...</div>`;
+            chatHistory.appendChild(aiMessage);
+
+            chatHistory.scrollTop = chatHistory.scrollHeight; // auto scroll
+            document.getElementById("message").value = "";
 
             try {
                 const res = await fetch(`/ai/generate?message=${encodeURIComponent(message)}`);
                 const data = await res.json();
-                responseDiv.textContent = data.generation;
+                aiMessage.innerHTML = `<div class="bubble">${data.generation}</div>`;
             } catch (err) {
-                responseDiv.textContent = "Error connecting to AI service.";
+                aiMessage.innerHTML = `<div class="bubble text-danger">Error connecting to AI service.</div>`;
             }
+
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         });
     </script>
 </body>
